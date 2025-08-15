@@ -154,7 +154,7 @@ func (l *Logger) initZerolog() {
 	multi := io.MultiWriter(writers...)
 
 	// Build logger with timestamp, caller, and prefix
-	base := zerolog.New(multi).With().Timestamp().Caller().Str("prefix", l.Prefix).Logger()
+	base := zerolog.New(multi).With().Timestamp().Caller().Str("service", l.Prefix).Logger()
 
 	l.zlog = base
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
