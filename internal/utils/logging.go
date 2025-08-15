@@ -112,7 +112,7 @@ func (l *Logger) initZerolog() {
 	zerolog.TimeFieldFormat = "15:04:05"
 
 	// Cut caller path to module path + version
-	zerolog.CallerMarshalFunc = func(file string, line int) string {
+	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 		if idx := strings.Index(file, "github.com/"); idx != -1 {
 			file = file[idx:]
 		}
