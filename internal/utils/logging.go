@@ -25,15 +25,15 @@ const (
 
 type Logger struct {
 	Level   LogLevel
-	service string
+	Prefix  string
 	nocolor bool
 	zlog    zerolog.Logger
 }
 
-// NewLogger creates a new Logger with service
-func NewLogger(service string) *Logger {
+// NewLogger creates a new Logger with prefix
+func NewLogger(prefix string) *Logger {
 	l := &Logger{
-		service: service,
+		Prefix: prefix,
 	}
 	l.initZerolog()
 	return l
@@ -53,8 +53,8 @@ func (l *Logger) Color() bool {
 	return !l.nocolor
 }
 
-func (l *Logger) Setservice(service string) *Logger {
-	l.service = service
+func (l *Logger) SetPrefix(prefix string) *Logger {
+	l.Prefix = prefix
 	l.initZerolog()
 	return l
 }
@@ -71,31 +71,31 @@ func (l *Logger) SetLevel(level LogLevel) *Logger {
 
 func (l *Logger) Error(v ...any) {
 	if l.Level <= ErrorLevel {
-		l.zlog.Error().Str("service", l.service).Msg(getVariable(v...))
+		l.zlog.Error().Str("service", l.Prefix).Msg(getVariable(v...))
 	}
 }
 
 func (l *Logger) Warn(v ...any) {
 	if l.Level <= WarnLevel {
-		l.zlog.Warn().Str("service", l.service).Msg(getVariable(v...))
+		l.zlog.Warn().Str("service", l.Prefix).Msg(getVariable(v...))
 	}
 }
 
 func (l *Logger) Info(v ...any) {
 	if l.Level <= InfoLevel {
-		l.zlog.Info().Str("service", l.service).Msg(getVariable(v...))
+		l.zlog.Info().Str("service", l.Prefix).Msg(getVariable(v...))
 	}
 }
 
 func (l *Logger) Debug(v ...any) {
 	if l.Level <= DebugLevel {
-		l.zlog.Debug().Str("service", l.service).Msg(getVariable(v...))
+		l.zlog.Debug().Str("service", l.Prefix).Msg(getVariable(v...))
 	}
 }
 
 func (l *Logger) Trace(v ...any) {
 	if l.Level <= TraceLevel {
-		l.zlog.Trace().Str("service", l.service).Msg(getVariable(v...))
+		l.zlog.Trace().Str("service", l.Prefix).Msg(getVariable(v...))
 	}
 }
 
@@ -103,7 +103,7 @@ func (l *Logger) Panic(v ...any) {
 	stack := make([]byte, 2048)
 	runtime.Stack(stack, false)
 	l.zlog.Panic().
-		Str("service", l.service).
+		Str("service", l.Prefix).
 		Str("stack", string(stack)).
 		Msg(getVariable(v...))
 }
@@ -153,8 +153,8 @@ func (l *Logger) initZerolog() {
 
 	multi := io.MultiWriter(writers...)
 
-	// Build logger with timestamp, caller, and service
-	base := zerolog.New(multi).With().Timestamp().Caller().Str("service", l.service).Logger()
+	// Build logger with timestamp, caller, and prefix
+	base := zerolog.New(multi).With().Timestamp().Caller().Str("service", l.Prefix).Logger()
 
 	l.zlog = base
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
