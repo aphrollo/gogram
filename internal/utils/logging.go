@@ -2,12 +2,14 @@ package utils
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"strings"
-	"time"
 
+	"github.com/mattn/go-colorable"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/pkgerrors"
 )
 
 type LogLevel int
@@ -21,7 +23,6 @@ const (
 	TraceLevel
 )
 
-// Logger wraps zerolog.Logger but keeps the same API
 type Logger struct {
 	Level   LogLevel
 	Prefix  string
@@ -29,25 +30,32 @@ type Logger struct {
 	zlog    zerolog.Logger
 }
 
-// NoColor disables colorized output.
+// NewLogger creates a new Logger with prefix
+func NewLogger(prefix string) *Logger {
+	l := &Logger{
+		Prefix: prefix,
+	}
+	l.initZerolog()
+	return l
+}
+
 func (l *Logger) NoColor(nocolor ...bool) *Logger {
 	if len(nocolor) > 0 {
 		l.nocolor = nocolor[0]
 	} else {
 		l.nocolor = true
 	}
-	l.configureLogger()
+	l.initZerolog()
 	return l
 }
 
-// Color returns true if colorized output is enabled.
 func (l *Logger) Color() bool {
 	return !l.nocolor
 }
 
 func (l *Logger) SetPrefix(prefix string) *Logger {
 	l.Prefix = prefix
-	l.configureLogger()
+	l.initZerolog()
 	return l
 }
 
@@ -57,7 +65,7 @@ func (l *Logger) Lev() LogLevel {
 
 func (l *Logger) SetLevel(level LogLevel) *Logger {
 	l.Level = level
-	l.configureLogger()
+	l.initZerolog()
 	return l
 }
 
@@ -100,40 +108,49 @@ func (l *Logger) Panic(v ...any) {
 		Msg(getVariable(v...))
 }
 
-func NewLogger(prefix string) *Logger {
-	l := &Logger{
-		Prefix: prefix,
-		Level:  InfoLevel,
+func (l *Logger) initZerolog() {
+	// Time format like your current logger
+	zerolog.TimeFieldFormat = "15:04:05"
+
+	// Determine level from env or fall back
+	envLevel := os.Getenv("LOG_LEVEL")
+	if envLevel == "" {
+		envLevel = "info"
 	}
-	l.configureLogger()
-	return l
-}
+	level, err := zerolog.ParseLevel(envLevel)
+	if err != nil {
+		level = zerolog.InfoLevel
+	}
+	zerolog.SetGlobalLevel(level)
 
-func (l *Logger) configureLogger() {
-	var output zerolog.ConsoleWriter
-	output.Out = os.Stdout
-	output.TimeFormat = time.RFC3339
-	output.NoColor = l.nocolor
-
-	z := zerolog.New(output).With().Timestamp().Logger()
-
-	// Map our custom LogLevel to zerolog Level
-	switch l.Level {
-	case DebugLevel:
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	case InfoLevel:
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	case WarnLevel:
-		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	case ErrorLevel:
-		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
-	case TraceLevel:
-		zerolog.SetGlobalLevel(zerolog.TraceLevel)
-	case NoLevel:
-		zerolog.SetGlobalLevel(zerolog.Disabled)
+	// Console writer (color-aware)
+	colorableStdout := colorable.NewColorableStdout()
+	consoleWriter := zerolog.ConsoleWriter{
+		Out:        colorableStdout,
+		TimeFormat: zerolog.TimeFieldFormat,
+		NoColor:    l.nocolor,
 	}
 
-	l.zlog = z
+	var writers []io.Writer
+	writers = append(writers, consoleWriter)
+
+	// Optional file writer
+	if logFile := os.Getenv("LOG_FILE"); logFile != "" {
+		file, err := os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		if err == nil {
+			writers = append(writers, file)
+		} else {
+			fmt.Printf("failed to open log file %s: %v\n", logFile, err)
+		}
+	}
+
+	multi := io.MultiWriter(writers...)
+
+	// Build logger with timestamp, caller, and prefix
+	base := zerolog.New(multi).With().Timestamp().Caller().Str("prefix", l.Prefix).Logger()
+
+	l.zlog = base
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 }
 
 func getVariable(v ...any) string {
