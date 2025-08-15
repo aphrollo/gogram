@@ -109,8 +109,15 @@ func (l *Logger) Panic(v ...any) {
 }
 
 func (l *Logger) initZerolog() {
-	// Time format like your current logger
 	zerolog.TimeFieldFormat = "15:04:05"
+
+	// Cut caller path to module path + version
+	zerolog.CallerMarshalFunc = func(file string, line int) string {
+		if idx := strings.Index(file, "github.com/"); idx != -1 {
+			file = file[idx:]
+		}
+		return fmt.Sprintf("%s:%d", file, line)
+	}
 
 	// Determine level from env or fall back
 	envLevel := os.Getenv("LOG_LEVEL")
