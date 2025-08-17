@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"strings"
 
 	"github.com/mattn/go-colorable"
@@ -28,6 +29,23 @@ type Logger struct {
 	Prefix  string
 	nocolor bool
 	zlog    zerolog.Logger
+}
+
+// Store gogram version dynamically
+var gogramVersion string
+
+func init() {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, dep := range info.Deps {
+			if dep.Path == "github.com/aphrollo/gogram" {
+				gogramVersion = dep.Version
+				break
+			}
+		}
+	}
+	if gogramVersion == "" {
+		gogramVersion = "unknown"
+	}
 }
 
 // NewLogger creates a new Logger with prefix
@@ -111,10 +129,10 @@ func (l *Logger) Panic(v ...any) {
 func (l *Logger) initZerolog() {
 	zerolog.TimeFieldFormat = "15:04:05"
 
-	// Cut caller path to module path + version
+	// Cut caller path to gogram@version only
 	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
-		if idx := strings.Index(file, "github.com/"); idx != -1 {
-			file = file[idx:]
+		if strings.Contains(file, "github.com/aphrollo/gogram") {
+			file = "gogram@" + gogramVersion
 		}
 		return fmt.Sprintf("%s:%d", file, line)
 	}
