@@ -131,7 +131,7 @@ func (l *Logger) initZerolog() {
 
 	// Cut caller path to gogram@version only
 	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
-		return fmt.Sprintf("%s:%d", "@gogram/logging.go", line)
+		return fmt.Sprintf("%s:%d", "gogram@v1.6.0/logging.go", line)
 	}
 
 	// Determine level from env or fall back
