@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"runtime"
-	"runtime/debug"
 	"strings"
 
 	"github.com/mattn/go-colorable"
@@ -29,23 +28,6 @@ type Logger struct {
 	Prefix  string
 	nocolor bool
 	zlog    zerolog.Logger
-}
-
-// Store gogram version dynamically
-var gogramVersion string
-
-func init() {
-	if info, ok := debug.ReadBuildInfo(); ok {
-		for _, dep := range info.Deps {
-			if dep.Path == "github.com/aphrollo/gogram" {
-				gogramVersion = dep.Version
-				break
-			}
-		}
-	}
-	if gogramVersion == "" {
-		gogramVersion = "unknown"
-	}
 }
 
 // NewLogger creates a new Logger with prefix
